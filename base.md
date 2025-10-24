@@ -1041,3 +1041,258 @@ Quer que eu detalhe mais algum aspecto específico do deploy?
 
 docker-compose down  # Limpa os containers anteriores
 docker-compose up --build
+
+
+
+
+
+🎓 Base.md - Projeto Agenda MERN (Atualizado)
+📁 ESTRUTURA ATUALIZADA DO PROJETO
+text
+agenda_mern/                    ← PASTA RAIZ
+├── front/                      ← React + Vite
+│   ├── src/
+│   ├── package.json
+│   ├── Dockerfile
+│   └── nginx.conf              ← AGORA DENTRO DE FRONT/
+├── back/                       ← Node.js + Express
+│   ├── src/
+│   ├── package.json
+│   └── Dockerfile
+├── nginx.conf                  ← NA RAIZ (opcional)
+└── docker-compose.yml          ← NA RAIZ
+🐳 DOCKER - CONFIGURAÇÃO ATUALIZADA
+📦 docker-compose.yml (Versão Corrigida)
+yaml
+# ❌ REMOVA a linha version - é obsoleta
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0
+    container_name: agenda_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - agenda-network
+
+  # Backend Node.js API
+  backend:
+    build: ./back
+    container_name: agenda_backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"    # ⚠️ Se der conflito, mude para "5001:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/agenda?authSource=admin
+      - SESSION_SECRET=my_super_secret_key_123
+    depends_on:
+      - mongodb
+    networks:
+      - agenda-network
+
+  # Frontend React Application
+  frontend:
+    build: ./front
+    container_name: agenda_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - agenda-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  agenda-network:
+    driver: bridge
+🔧 Dockerfile do Frontend (Corrigido)
+dockerfile
+# Build stage
+FROM node:18-alpine as build
+
+WORKDIR /app
+
+# Copiar package.json
+COPY package*.json ./
+
+# Instalar todas as dependências
+RUN npm ci
+
+# Copiar código e build
+COPY . .
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine
+
+# Copiar build do React
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# ⚠️ IMPORTANTE: nginx.conf agora está na mesma pasta (front/)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expor porta
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+🌐 nginx.conf do Frontend
+nginx
+server {
+    listen 80;
+    server_name localhost;
+    
+    # Servir arquivos estáticos do React
+    location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # Proxy para API backend
+    location /api {
+        proxy_pass http://backend:5000;  # ⚠️ "backend" = nome do serviço no docker-compose
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+🚀 COMANDOS DOCKER ATUALIZADOS
+✅ Comandos Básicos:
+bash
+# Build e execução
+docker-compose up --build
+
+# Executar em background
+docker-compose up --build -d
+
+# Parar containers
+docker-compose down
+
+# Parar e remover volumes
+docker-compose down -v
+
+# Ver logs
+docker-compose logs
+docker-compose logs -f backend
+🛠️ Scripts Úteis (package.json):
+json
+{
+  "scripts": {
+    "docker:up": "docker-compose up --build",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:clean": "docker system prune -f"
+  }
+}
+⚠️ SOLUÇÃO DE PROBLEMAS COMUNS
+🔴 Problema: Porta 5000 em uso
+bash
+# Encontrar processo usando a porta
+netstat -ano | findstr :5000
+
+# Matar processo (substitua PID)
+taskkill /PID <NUMERO_PID> /F
+
+# Alternativa: mudar porta no docker-compose.yml
+ports:
+  - "5001:5000"  # Externa:5001 → Interna:5000
+🔴 Problema: nginx.conf não encontrado
+Solução: Certifique-se que nginx.conf está na pasta front/
+
+🔴 Problema: Build falha
+bash
+# Limpar cache do Docker
+docker system prune -f
+
+# Rebuildar forçadamente
+docker-compose build --no-cache
+🔄 FLUXO DE REQUISIÇÕES NO DOCKER
+text
+Usuário → http://localhost:3000 ↵
+    ↓
+Container Frontend (Nginx na porta 3000) ↵
+    ↓
+Se URL = / → Serve React (arquivos estáticos) ↵
+Se URL = /api/* → Proxy para backend:5000 ↵
+    ↓
+Container Backend (Node.js na porta 5000) ↵
+    ↓
+Container MongoDB (porta 27017) ↵
+    ↓
+Resposta ← Backend ← Frontend ← Usuário
+📊 VERIFICAÇÃO DE FUNCIONAMENTO
+✅ Teste os serviços:
+bash
+# 1. Verificar containers ativos
+docker ps
+
+# Deve mostrar:
+# agenda_frontend, agenda_backend, agenda_mongodb
+
+# 2. Testar endpoints
+curl http://localhost:5000/api/health    # Backend
+curl http://localhost:3000               # Frontend
+
+# 3. Verificar logs específicos
+docker-compose logs backend
+docker-compose logs frontend
+🌐 URLs para testar no navegador:
+Frontend: http://localhost:3000
+
+Backend API: http://localhost:5000/api/health
+
+MongoDB: localhost:27017 (via MongoDB Compass)
+
+🎯 ESTRUTURA DE ARQUIVOS CORRETA
+📍 Localização dos arquivos:
+text
+agenda_mern/
+├── front/
+│   ├── nginx.conf          ← ✅ CORRETO: Dentro de front/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── src/
+├── back/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── src/
+└── docker-compose.yml      ← ✅ CORRETO: Na raiz
+💡 DICAS IMPORTANTES
+Sempre execute docker-compose down antes de docker-compose up --build
+
+Mova nginx.conf para dentro da pasta front/
+
+Remova a linha version do docker-compose.yml
+
+Use docker-compose logs para debug
+
+Verifique se as portas não estão em conflito
+
+🔧 COMANDOS ÚTEIS PARA DESENVOLVIMENTO
+bash
+# Acessar container para debug
+docker-compose exec backend bash
+docker-compose exec frontend sh
+
+# Ver uso de recursos
+docker stats
+
+# Limpar tudo
+docker-compose down -v --remove-orphans
+docker system prune -f
