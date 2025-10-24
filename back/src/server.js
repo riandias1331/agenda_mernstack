@@ -40,6 +40,14 @@ const contactRoutes = require('./routes/Contacts.js');
 app.use('/api/auth', authRoutes);
 app.use('/api/contacts', contactRoutes);
 
+// Route test
+// Views
+app.set('view engine', 'ejs')
+app.set('views', './src/views')
+app.get('/api/teste', (req, res) => {
+    res.render('index')
+})
+
 // Rota de saúde
 app.get('/api/health', (req, res) => {
   res.json({ 
