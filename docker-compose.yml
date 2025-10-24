@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # MongoDB
+  mongodb:
+    image: mongo:6.0
+    container_name: agenda_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - agenda-network
+
+  # Backend Node.js
+  backend:
+    build: ./back
+    container_name: agenda_backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/agenda?authSource=admin
+      - SESSION_SECRET=my_super_secret_key_123
+    depends_on:
+      - mongodb
+    networks:
+      - agenda-network
+
+  # Frontend React
+  frontend:
+    build: ./front
+    container_name: agenda_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - agenda-network
+
+  # Nginx (Opcional - para produção)
+  nginx:
+    image: nginx:alpine
+    container_name: agenda_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - agenda-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  agenda-network:
+    driver: bridge
