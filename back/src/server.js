@@ -66,7 +66,7 @@ app.use('*', (req, res) => {
 app.use(require('./middlewares/errorHandler.js'));
 
 // Iniciar servidor
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor backend rodando na porta ${PORT}`);
   console.log(`📊 MongoDB: ${process.env.MONGODB_URI}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
