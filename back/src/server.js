@@ -5,7 +5,7 @@ const session = require('express-session');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5009;
 
 // Conexão com MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/agenda')
