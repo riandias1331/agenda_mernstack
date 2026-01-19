@@ -94,3 +94,8 @@ exports.getUser = async (req, res, next) => {
     next(error);
   }
 };
+
+
+exports.teste = (req, res) => {
+  res.render('index')
+};

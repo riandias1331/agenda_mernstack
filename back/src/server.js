@@ -44,9 +44,7 @@ app.use('/api/contacts', contactRoutes);
 // Views
 app.set('view engine', 'ejs')
 app.set('views', './src/views')
-app.get('/api/teste', (req, res) => {
-    res.render('index')
-})
+
 
 // Rota de saúde
 app.get('/api/health', (req, res) => {
